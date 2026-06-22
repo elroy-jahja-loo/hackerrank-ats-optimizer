@@ -289,8 +289,10 @@ function renderResults(data) {
   // Category bars
   const barsEl = document.getElementById('category-bars');
   barsEl.innerHTML = '';
+  let catSubtotal = 0;
   for (const [key, meta] of Object.entries(CAT_META)) {
     const s = evaluation.scores[key];
+    catSubtotal += s.score;
     const pctBar = Math.round((s.score / s.max) * 100);
     barsEl.innerHTML += `
       <div class="space-y-1">
@@ -303,27 +305,51 @@ function renderResults(data) {
         </div>
       </div>`;
   }
+
+  // Score tally so the math is always visible
+  const bonus = evaluation.bonus_points;
+  const deduct = evaluation.deductions;
+  const sign = n => n >= 0 ? `+${n}` : `${n}`;
+  barsEl.innerHTML += `
+    <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500 space-y-1">
+      <div class="flex justify-between">
+        <span>Categories subtotal</span>
+        <span class="font-medium text-gray-700">${catSubtotal} / 100</span>
+      </div>
+      <div class="flex justify-between text-green-600">
+        <span>Bonus points</span>
+        <span class="font-medium">${sign(bonus.total)}</span>
+      </div>
+      <div class="flex justify-between text-red-500">
+        <span>Deductions</span>
+        <span class="font-medium">−${deduct.total}</span>
+      </div>
+      <div class="flex justify-between font-semibold text-gray-800 pt-1 border-t border-gray-200">
+        <span>Total</span>
+        <span>${evaluation.total_score} / 120</span>
+      </div>
+    </div>`;
+
   setTimeout(() => {
     document.querySelectorAll('.score-bar-fill').forEach(el => {
       el.style.width = el.dataset.target;
     });
   }, 150);
 
-  // Bonus / deductions
+  // Bonus / deductions detail card (breakdown text)
   const bonusCard = document.getElementById('bonus-card');
-  const bonus = evaluation.bonus_points;
-  const deduct = evaluation.deductions;
   bonusCard.innerHTML = `
-    <div class="flex gap-4">
-      <div class="flex-1 text-center rounded-xl bg-green-50 py-3">
-        <p class="text-2xl font-bold text-green-600">+${bonus.total}</p>
-        <p class="text-xs text-gray-500 mt-1">Bonus Points</p>
-        <p class="text-xs text-gray-400 mt-1 px-2 leading-snug">${escHtml(bonus.breakdown)}</p>
+    <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Bonus &amp; Deductions</p>
+    <div class="flex gap-3">
+      <div class="flex-1 rounded-xl bg-green-50 px-3 py-2">
+        <p class="text-lg font-bold text-green-600">+${bonus.total}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Bonus</p>
+        <p class="text-xs text-gray-400 mt-1 leading-snug">${escHtml(bonus.breakdown)}</p>
       </div>
-      <div class="flex-1 text-center rounded-xl bg-red-50 py-3">
-        <p class="text-2xl font-bold text-red-500">-${deduct.total}</p>
-        <p class="text-xs text-gray-500 mt-1">Deductions</p>
-        <p class="text-xs text-gray-400 mt-1 px-2 leading-snug">${escHtml(deduct.reasons)}</p>
+      <div class="flex-1 rounded-xl bg-red-50 px-3 py-2">
+        <p class="text-lg font-bold text-red-500">−${deduct.total}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Deductions</p>
+        <p class="text-xs text-gray-400 mt-1 leading-snug">${escHtml(deduct.reasons)}</p>
       </div>
     </div>`;
 
