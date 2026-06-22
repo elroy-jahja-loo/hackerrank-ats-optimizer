@@ -143,6 +143,31 @@
           </div>
         </div>
         <div id="score-grade" class="mt-2 text-sm font-semibold"></div>
+
+        <!-- Tier scale ruler -->
+        <div class="mt-4 px-1">
+          <div class="relative h-3 rounded-full overflow-hidden flex">
+            <div class="bg-red-400"   style="width:33.3%"></div>
+            <div class="bg-amber-400" style="width:16.7%"></div>
+            <div class="bg-blue-400"  style="width:16.7%"></div>
+            <div class="bg-emerald-400" style="width:33.3%"></div>
+            <!-- needle -->
+            <div id="tier-needle" class="absolute top-0 h-full w-0.5 bg-gray-800 transition-all duration-700"
+                 style="left:0%"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 mt-1 px-0.5">
+            <span>0</span><span>40</span><span>60</span><span>80</span><span>120</span>
+          </div>
+          <div class="flex justify-between text-xs mt-0.5 px-0.5" style="font-size:10px">
+            <span class="text-red-400 w-1/4 text-left">Needs Work</span>
+            <span class="text-amber-500 w-1/4 text-center">Average</span>
+            <span class="text-blue-500 w-1/4 text-center">Strong</span>
+            <span class="text-emerald-500 w-1/4 text-right">Excellent</span>
+          </div>
+        </div>
+
+        <!-- Gap to next tier -->
+        <p id="next-tier-msg" class="mt-3 text-xs text-gray-500 text-center"></p>
       </div>
 
       <!-- Category scores -->
@@ -286,6 +311,27 @@ function renderResults(data) {
   gradeEl.textContent = label;
   gradeEl.className = `mt-2 text-sm font-semibold ${cls}`;
 
+  // Tier needle (ruler goes 0→120 mapped to 0→100%)
+  setTimeout(() => {
+    const needlePct = Math.max(0, Math.min(100, (score / 120) * 100));
+    document.getElementById('tier-needle').style.left = needlePct + '%';
+  }, 150);
+
+  // Gap to next tier
+  const TIERS = [
+    { min: 80, label: 'Excellent Candidate', cls: 'text-emerald-600' },
+    { min: 60, label: 'Strong Candidate',    cls: 'text-blue-600' },
+    { min: 40, label: 'Average Candidate',   cls: 'text-amber-500' },
+  ];
+  const nextTier = TIERS.find(t => score < t.min);
+  const msgEl = document.getElementById('next-tier-msg');
+  if (nextTier) {
+    const gap = (nextTier.min - score).toFixed(1);
+    msgEl.innerHTML = `<span class="${nextTier.cls} font-semibold">${gap} more points</span> to reach <span class="${nextTier.cls} font-semibold">${nextTier.label}</span>`;
+  } else {
+    msgEl.innerHTML = `<span class="text-emerald-600 font-semibold">Top tier — Excellent Candidate</span>`;
+  }
+
   // Category bars
   const barsEl = document.getElementById('category-bars');
   barsEl.innerHTML = '';
@@ -294,10 +340,16 @@ function renderResults(data) {
     const s = evaluation.scores[key];
     catSubtotal += s.score;
     const pctBar = Math.round((s.score / s.max) * 100);
+    const health = pctBar >= 70 ? { icon: '✓', cls: 'text-emerald-500' }
+                 : pctBar >= 40 ? { icon: '~', cls: 'text-amber-500' }
+                 :                { icon: '✗', cls: 'text-red-400' };
     barsEl.innerHTML += `
       <div class="space-y-1">
         <div class="flex justify-between text-xs font-medium">
-          <span class="${meta.textClass}">${meta.label}</span>
+          <span class="flex items-center gap-1">
+            <span class="${health.cls} font-bold">${health.icon}</span>
+            <span class="${meta.textClass}">${meta.label}</span>
+          </span>
           <span class="text-gray-600">${s.score} / ${s.max}</span>
         </div>
         <div class="w-full bg-gray-100 rounded-full h-2.5">
