@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume Grader — HackerRank ATS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── upload drag-over ── */
+    #drop-zone.drag-over { border-color: #00BFA5; background: #f0fdf9; }
+
+    /* ── score ring ── */
+    .ring-track { stroke: #e5e7eb; }
+    .ring-fill   { stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+    /* ── category colours ── */
+    .cat-production      { --accent: #3B82F6; --bg: #EFF6FF; --border: #93C5FD; }
+    .cat-self_projects   { --accent: #8B5CF6; --bg: #F5F3FF; --border: #C4B5FD; }
+    .cat-open_source     { --accent: #10B981; --bg: #ECFDF5; --border: #6EE7B7; }
+    .cat-technical_skills{ --accent: #F59E0B; --bg: #FFFBEB; --border: #FCD34D; }
+    .cat-education       { --accent: #6B7280; --bg: #F9FAFB; --border: #D1D5DB; }
+    .cat-basics          { --accent: #6B7280; --bg: #F9FAFB; --border: #D1D5DB; }
+    .cat-awards          { --accent: #EC4899; --bg: #FDF2F8; --border: #F9A8D4; }
+
+    .resume-section {
+      border-left: 4px solid var(--border);
+      background: var(--bg);
+    }
+    .cat-badge {
+      background: var(--accent);
+    }
+    .evidence-pill {
+      border-left: 3px solid var(--accent);
+    }
+
+    /* ── score bar ── */
+    .score-bar-fill { transition: width 1s ease; }
+
+    /* ── fade in ── */
+    @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+    .fade-up { animation: fadeUp .5s ease forwards; }
+
+    /* highlight phrase found in evidence */
+    mark.ev-highlight { background: rgba(16,185,129,.20); border-radius:2px; padding:0 2px; }
+    mark.ev-highlight-blue { background: rgba(59,130,246,.20); border-radius:2px; padding:0 2px; }
+    mark.ev-highlight-purple { background: rgba(139,92,246,.20); border-radius:2px; padding:0 2px; }
+    mark.ev-highlight-amber { background: rgba(245,158,11,.20); border-radius:2px; padding:0 2px; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-gray-800">
+
+<!-- ── Navbar ── -->
+<nav class="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3">
+  <svg class="w-7 h-7 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+  </svg>
+  <span class="font-bold text-lg tracking-tight">HackerRank <span class="text-green-500">Resume Grader</span></span>
+</nav>
+
+<!-- ── Upload Screen ── -->
+<div id="upload-screen" class="max-w-2xl mx-auto mt-16 px-4">
+  <div class="text-center mb-8">
+    <h1 class="text-3xl font-bold mb-2">Grade Your Resume</h1>
+    <p class="text-gray-500">Upload your PDF and get instant AI-powered feedback on open source, projects, production experience, and technical skills.</p>
+  </div>
+
+  <div id="drop-zone"
+       class="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center cursor-pointer transition-colors hover:border-green-400 hover:bg-green-50"
+       onclick="document.getElementById('file-input').click()"
+       ondragover="handleDragOver(event)"
+       ondragleave="handleDragLeave(event)"
+       ondrop="handleDrop(event)">
+    <svg class="w-14 h-14 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+    </svg>
+    <p class="text-lg font-medium text-gray-600">Drop your resume here</p>
+    <p class="text-sm text-gray-400 mt-1">or click to browse · PDF only</p>
+    <input id="file-input" type="file" accept=".pdf" class="hidden" onchange="handleFileSelect(event)" />
+  </div>
+
+  <div id="file-name" class="mt-4 text-center text-sm text-gray-500 hidden"></div>
+
+  <div class="mt-6 flex justify-center">
+    <button id="analyze-btn"
+            onclick="submitResume()"
+            class="hidden bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-3 rounded-xl transition-colors shadow">
+      Analyze Resume
+    </button>
+  </div>
+
+  <div id="error-msg" class="hidden mt-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm"></div>
+</div>
+
+<!-- ── Loading ── -->
+<div id="loading-screen" class="hidden max-w-2xl mx-auto mt-24 px-4 text-center">
+  <div class="inline-flex items-center gap-3 bg-white rounded-2xl px-8 py-6 shadow-lg">
+    <svg class="animate-spin w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+    </svg>
+    <div class="text-left">
+      <p class="font-semibold text-gray-700" id="loading-step">Extracting resume sections…</p>
+      <p class="text-sm text-gray-400">This may take 30–90 seconds</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Results Screen ── -->
+<div id="results-screen" class="hidden max-w-7xl mx-auto px-4 py-8">
+
+  <!-- top bar -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 id="candidate-name" class="text-2xl font-bold"></h2>
+      <p class="text-sm text-gray-400" id="candidate-email"></p>
+    </div>
+    <button onclick="resetPage()" class="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+      Analyze another
+    </button>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+
+    <!-- LEFT: Resume viewer (3/5) -->
+    <div class="xl:col-span-3 space-y-4" id="resume-viewer"></div>
+
+    <!-- RIGHT: Scores + feedback (2/5) -->
+    <div class="xl:col-span-2 space-y-4">
+
+      <!-- Overall score card -->
+      <div class="bg-white rounded-2xl shadow p-6 fade-up text-center">
+        <p class="text-sm font-medium text-gray-500 mb-2">Overall Score</p>
+        <div class="relative inline-flex items-center justify-center">
+          <svg class="w-36 h-36 -rotate-90" viewBox="0 0 120 120">
+            <circle class="ring-track" cx="60" cy="60" r="52" stroke-width="10" fill="none"/>
+            <circle id="ring-fill" class="ring-fill" cx="60" cy="60" r="52" stroke-width="10" fill="none"
+                    stroke="#10B981" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+          </svg>
+          <div class="absolute flex flex-col items-center">
+            <span id="total-score" class="text-4xl font-bold text-gray-800"></span>
+            <span class="text-xs text-gray-400">/ 120</span>
+          </div>
+        </div>
+        <div id="score-grade" class="mt-2 text-sm font-semibold"></div>
+      </div>
+
+      <!-- Category scores -->
+      <div class="bg-white rounded-2xl shadow p-5 fade-up space-y-4">
+        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Category Breakdown</p>
+        <div id="category-bars"></div>
+      </div>
+
+      <!-- Bonus / Deductions -->
+      <div class="bg-white rounded-2xl shadow p-5 fade-up" id="bonus-card"></div>
+
+      <!-- Strengths -->
+      <div class="bg-white rounded-2xl shadow p-5 fade-up">
+        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Key Strengths</p>
+        <ul id="strengths-list" class="space-y-2"></ul>
+      </div>
+
+      <!-- Improvements -->
+      <div class="bg-white rounded-2xl shadow p-5 fade-up">
+        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">Areas to Improve</p>
+        <ul id="improvements-list" class="space-y-2"></ul>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let selectedFile = null;
+
+// ── Drop zone ─────────────────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function handleDragLeave(e) { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) setFile(file);
+}
+function handleFileSelect(e) { if (e.target.files[0]) setFile(e.target.files[0]); }
+
+function setFile(file) {
+  selectedFile = file;
+  document.getElementById('file-name').textContent = `📄 ${file.name}`;
+  document.getElementById('file-name').classList.remove('hidden');
+  document.getElementById('analyze-btn').classList.remove('hidden');
+  document.getElementById('error-msg').classList.add('hidden');
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+async function submitResume() {
+  if (!selectedFile) return;
+
+  document.getElementById('upload-screen').classList.add('hidden');
+  document.getElementById('loading-screen').classList.remove('hidden');
+
+  const steps = [
+    'Extracting resume sections…',
+    'Analyzing work experience…',
+    'Evaluating projects…',
+    'Scoring technical skills…',
+    'Generating feedback…',
+  ];
+  let stepIdx = 0;
+  const stepEl = document.getElementById('loading-step');
+  const stepTimer = setInterval(() => {
+    stepIdx = (stepIdx + 1) % steps.length;
+    stepEl.textContent = steps[stepIdx];
+  }, 4000);
+
+  const form = new FormData();
+  form.append('resume', selectedFile);
+
+  try {
+    const res = await fetch('/analyze', { method: 'POST', body: form });
+    const data = await res.json();
+    clearInterval(stepTimer);
+
+    if (!res.ok) {
+      showError(data.error || 'Unexpected server error');
+      return;
+    }
+
+    renderResults(data);
+  } catch (err) {
+    clearInterval(stepTimer);
+    showError('Network error: ' + err.message);
+  }
+}
+
+function showError(msg) {
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('upload-screen').classList.remove('hidden');
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function resetPage() {
+  selectedFile = null;
+  document.getElementById('results-screen').classList.add('hidden');
+  document.getElementById('upload-screen').classList.remove('hidden');
+  document.getElementById('file-name').classList.add('hidden');
+  document.getElementById('analyze-btn').classList.add('hidden');
+  document.getElementById('file-input').value = '';
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+const CAT_META = {
+  open_source:      { label: 'Open Source',         color: '#10B981', barClass: 'bg-emerald-500', textClass: 'text-emerald-600', sectionKey: 'open_source' },
+  self_projects:    { label: 'Self Projects',        color: '#8B5CF6', barClass: 'bg-violet-500',  textClass: 'text-violet-600',  sectionKey: 'self_projects' },
+  production:       { label: 'Production Experience',color: '#3B82F6', barClass: 'bg-blue-500',    textClass: 'text-blue-600',    sectionKey: 'production' },
+  technical_skills: { label: 'Technical Skills',     color: '#F59E0B', barClass: 'bg-amber-500',   textClass: 'text-amber-600',   sectionKey: 'technical_skills' },
+};
+
+function renderResults(data) {
+  document.getElementById('loading-screen').classList.add('hidden');
+  document.getElementById('results-screen').classList.remove('hidden');
+
+  const { resume, evaluation } = data;
+  const basics = resume.basics || {};
+
+  // Header
+  document.getElementById('candidate-name').textContent = basics.name || 'Your Resume';
+  document.getElementById('candidate-email').textContent = basics.email || '';
+
+  // Overall score ring
+  const score = evaluation.total_score;
+  const pct = Math.max(0, Math.min(100, score / 120));
+  const circumference = 2 * Math.PI * 52;
+  const offset = circumference * (1 - pct);
+  setTimeout(() => {
+    document.getElementById('ring-fill').style.strokeDashoffset = offset;
+    document.getElementById('ring-fill').style.stroke = scoreColor(score);
+  }, 100);
+  document.getElementById('total-score').textContent = score.toFixed(1);
+
+  const gradeEl = document.getElementById('score-grade');
+  const { label, cls } = scoreGrade(score);
+  gradeEl.textContent = label;
+  gradeEl.className = `mt-2 text-sm font-semibold ${cls}`;
+
+  // Category bars
+  const barsEl = document.getElementById('category-bars');
+  barsEl.innerHTML = '';
+  for (const [key, meta] of Object.entries(CAT_META)) {
+    const s = evaluation.scores[key];
+    const pctBar = Math.round((s.score / s.max) * 100);
+    barsEl.innerHTML += `
+      <div class="space-y-1">
+        <div class="flex justify-between text-xs font-medium">
+          <span class="${meta.textClass}">${meta.label}</span>
+          <span class="text-gray-600">${s.score} / ${s.max}</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-2.5">
+          <div class="score-bar-fill ${meta.barClass} h-2.5 rounded-full" style="width:0%" data-target="${pctBar}%"></div>
+        </div>
+      </div>`;
+  }
+  setTimeout(() => {
+    document.querySelectorAll('.score-bar-fill').forEach(el => {
+      el.style.width = el.dataset.target;
+    });
+  }, 150);
+
+  // Bonus / deductions
+  const bonusCard = document.getElementById('bonus-card');
+  const bonus = evaluation.bonus_points;
+  const deduct = evaluation.deductions;
+  bonusCard.innerHTML = `
+    <div class="flex gap-4">
+      <div class="flex-1 text-center rounded-xl bg-green-50 py-3">
+        <p class="text-2xl font-bold text-green-600">+${bonus.total}</p>
+        <p class="text-xs text-gray-500 mt-1">Bonus Points</p>
+        <p class="text-xs text-gray-400 mt-1 px-2 leading-snug">${escHtml(bonus.breakdown)}</p>
+      </div>
+      <div class="flex-1 text-center rounded-xl bg-red-50 py-3">
+        <p class="text-2xl font-bold text-red-500">-${deduct.total}</p>
+        <p class="text-xs text-gray-500 mt-1">Deductions</p>
+        <p class="text-xs text-gray-400 mt-1 px-2 leading-snug">${escHtml(deduct.reasons)}</p>
+      </div>
+    </div>`;
+
+  // Strengths
+  const sl = document.getElementById('strengths-list');
+  sl.innerHTML = (evaluation.key_strengths || []).map(s => `
+    <li class="flex items-start gap-2 text-sm">
+      <span class="mt-0.5 text-green-500 shrink-0">✓</span>
+      <span>${escHtml(s)}</span>
+    </li>`).join('');
+
+  // Improvements
+  const il = document.getElementById('improvements-list');
+  il.innerHTML = (evaluation.areas_for_improvement || []).map(s => `
+    <li class="flex items-start gap-2 text-sm">
+      <span class="mt-0.5 text-amber-500 shrink-0">↑</span>
+      <span>${escHtml(s)}</span>
+    </li>`).join('');
+
+  // Resume viewer
+  renderResumeViewer(resume, evaluation);
+}
+
+// ── Resume Viewer ──────────────────────────────────────────────────────────
+function renderResumeViewer(resume, evaluation) {
+  const viewer = document.getElementById('resume-viewer');
+  viewer.innerHTML = '';
+
+  const sections = buildSections(resume, evaluation);
+  sections.forEach(sec => {
+    const div = document.createElement('div');
+    div.className = `resume-section cat-${sec.cat} rounded-xl p-4 fade-up`;
+    div.innerHTML = sec.html;
+    viewer.appendChild(div);
+  });
+}
+
+function buildSections(resume, evaluation) {
+  const sections = [];
+
+  // ── Basics ──
+  if (resume.basics) {
+    const b = resume.basics;
+    const profiles = (b.profiles || []).map(p =>
+      `<a href="${escHtml(p.url)}" target="_blank" class="text-blue-500 hover:underline text-xs">${escHtml(p.network || p.url)}</a>`
+    ).join('  ·  ');
+    sections.push({
+      cat: 'basics',
+      html: `
+        <div class="flex items-center justify-between mb-1">
+          <h3 class="font-bold text-base">${escHtml(b.name || '')}</h3>
+          ${badge('basics', 'Contact')}
+        </div>
+        <p class="text-xs text-gray-500">${escHtml(b.email || '')} ${b.phone ? '· ' + escHtml(b.phone) : ''}</p>
+        ${profiles ? `<p class="mt-1 flex flex-wrap gap-2">${profiles}</p>` : ''}
+        ${b.summary ? `<p class="mt-2 text-sm text-gray-600">${escHtml(b.summary)}</p>` : ''}`,
+    });
+  }
+
+  // ── Work → Production ──
+  if (resume.work && resume.work.length) {
+    const ev = evaluation.scores.production.evidence;
+    const items = resume.work.map(w => {
+      const period = [w.startDate, w.endDate].filter(Boolean).join(' – ');
+      const highlights = (w.highlights || []).map(h => `<li class="text-xs text-gray-600 ml-3">• ${highlightEvidence(escHtml(h), ev, 'ev-highlight-blue')}</li>`).join('');
+      return `
+        <div class="mb-3 last:mb-0">
+          <div class="flex items-baseline justify-between">
+            <span class="font-semibold text-sm">${highlightEvidence(escHtml(w.position || ''), ev, 'ev-highlight-blue')}</span>
+            <span class="text-xs text-gray-400">${escHtml(period)}</span>
+          </div>
+          <span class="text-xs text-blue-600 font-medium">${highlightEvidence(escHtml(w.name || ''), ev, 'ev-highlight-blue')}</span>
+          ${w.summary ? `<p class="text-xs text-gray-500 mt-0.5">${highlightEvidence(escHtml(w.summary), ev, 'ev-highlight-blue')}</p>` : ''}
+          ${highlights ? `<ul class="mt-1">${highlights}</ul>` : ''}
+        </div>`;
+    }).join('');
+    sections.push({
+      cat: 'production',
+      html: `
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm uppercase tracking-wide text-blue-600">Work Experience</h3>
+          ${scoreBadge('production', evaluation.scores.production)}
+        </div>
+        ${items}
+        ${evidenceNote(ev, '#3B82F6')}`,
+    });
+  }
+
+  // ── Projects → Self Projects + Open Source ──
+  if (resume.projects && resume.projects.length) {
+    const evSelf = evaluation.scores.self_projects.evidence;
+    const evOS   = evaluation.scores.open_source.evidence;
+    const items = resume.projects.map(p => {
+      const tech = (p.technologies || p.skills || []).slice(0, 6).map(t =>
+        `<span class="bg-violet-100 text-violet-700 text-xs px-1.5 py-0.5 rounded">${escHtml(t)}</span>`
+      ).join(' ');
+      const highlights = (p.highlights || []).map(h => `<li class="text-xs text-gray-600 ml-3">• ${escHtml(h)}</li>`).join('');
+      const link = p.url ? `<a href="${escHtml(p.url)}" target="_blank" class="text-xs text-violet-500 hover:underline ml-2">↗ link</a>` : '';
+      return `
+        <div class="mb-3 last:mb-0">
+          <div class="flex items-baseline gap-1 flex-wrap">
+            <span class="font-semibold text-sm">${highlightEvidence(escHtml(p.name || ''), evSelf + ' ' + evOS, 'ev-highlight-purple')}</span>
+            ${link}
+          </div>
+          ${p.description ? `<p class="text-xs text-gray-500 mt-0.5">${escHtml(p.description)}</p>` : ''}
+          ${highlights ? `<ul class="mt-0.5">${highlights}</ul>` : ''}
+          ${tech ? `<div class="flex flex-wrap gap-1 mt-1">${tech}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    sections.push({
+      cat: 'self_projects',
+      html: `
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm uppercase tracking-wide text-violet-600">Projects</h3>
+          <div class="flex gap-2">
+            ${scoreBadge('self_projects', evaluation.scores.self_projects)}
+            ${scoreBadge('open_source', evaluation.scores.open_source)}
+          </div>
+        </div>
+        ${items}
+        ${evidenceNote(evSelf, '#8B5CF6')}
+        ${evidenceNote(evOS, '#10B981')}`,
+    });
+  }
+
+  // ── Skills → Technical Skills ──
+  if (resume.skills && resume.skills.length) {
+    const ev = evaluation.scores.technical_skills.evidence;
+    const items = resume.skills.map(s => {
+      const kw = (s.keywords || []).map(k =>
+        `<span class="bg-amber-100 text-amber-800 text-xs px-1.5 py-0.5 rounded">${highlightEvidence(escHtml(k), ev, 'ev-highlight-amber')}</span>`
+      ).join(' ');
+      return `<div class="mb-2"><span class="text-xs font-semibold text-gray-600">${escHtml(s.name || '')}:</span> <span class="flex flex-wrap gap-1 mt-1">${kw}</span></div>`;
+    }).join('');
+    sections.push({
+      cat: 'technical_skills',
+      html: `
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm uppercase tracking-wide text-amber-600">Technical Skills</h3>
+          ${scoreBadge('technical_skills', evaluation.scores.technical_skills)}
+        </div>
+        ${items}
+        ${evidenceNote(ev, '#F59E0B')}`,
+    });
+  }
+
+  // ── Education ──
+  if (resume.education && resume.education.length) {
+    const items = resume.education.map(e => {
+      const period = [e.startDate, e.endDate].filter(Boolean).join(' – ');
+      return `
+        <div class="mb-2 last:mb-0">
+          <div class="flex items-baseline justify-between">
+            <span class="font-semibold text-sm">${escHtml(e.institution || '')}</span>
+            <span class="text-xs text-gray-400">${escHtml(period)}</span>
+          </div>
+          <p class="text-xs text-gray-500">${escHtml([e.studyType, e.area].filter(Boolean).join(', '))}</p>
+          ${e.score ? `<p class="text-xs text-gray-400">GPA / Score: ${escHtml(e.score)}</p>` : ''}
+        </div>`;
+    }).join('');
+    sections.push({
+      cat: 'education',
+      html: `
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm uppercase tracking-wide text-gray-500">Education</h3>
+          ${badge('education', 'Education')}
+        </div>
+        ${items}`,
+    });
+  }
+
+  // ── Awards ──
+  if (resume.awards && resume.awards.length) {
+    const items = resume.awards.map(a =>
+      `<div class="mb-1 last:mb-0 text-sm">
+        <span class="font-medium">${escHtml(a.title || '')}</span>
+        ${a.awarder ? `<span class="text-xs text-gray-500"> — ${escHtml(a.awarder)}</span>` : ''}
+        ${a.summary ? `<p class="text-xs text-gray-500">${escHtml(a.summary)}</p>` : ''}
+      </div>`
+    ).join('');
+    sections.push({
+      cat: 'awards',
+      html: `
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-bold text-sm uppercase tracking-wide text-pink-500">Awards & Achievements</h3>
+          ${badge('awards', 'Bonus')}
+        </div>
+        ${items}
+        ${evidenceNote(evaluation.bonus_points.breakdown, '#EC4899')}`,
+    });
+  }
+
+  return sections;
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function badge(cat, label) {
+  const colors = {
+    production: 'bg-blue-100 text-blue-700',
+    self_projects: 'bg-violet-100 text-violet-700',
+    open_source: 'bg-emerald-100 text-emerald-700',
+    technical_skills: 'bg-amber-100 text-amber-700',
+    education: 'bg-gray-100 text-gray-600',
+    basics: 'bg-gray-100 text-gray-600',
+    awards: 'bg-pink-100 text-pink-600',
+  };
+  return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full ${colors[cat] || 'bg-gray-100 text-gray-600'}">${label}</span>`;
+}
+
+function scoreBadge(cat, scoreObj) {
+  const meta = CAT_META[cat];
+  if (!meta) return '';
+  return `<span class="text-xs font-semibold px-2 py-0.5 rounded-full" style="background:${meta.color}22;color:${meta.color}">${meta.label}: ${scoreObj.score}/${scoreObj.max}</span>`;
+}
+
+function evidenceNote(ev, color) {
+  if (!ev) return '';
+  return `<div class="evidence-pill mt-3 pl-3 py-1 text-xs text-gray-500 italic" style="border-color:${color}">${escHtml(ev)}</div>`;
+}
+
+function highlightEvidence(text, evidence, cls) {
+  if (!evidence || !text) return text;
+  // extract words 4+ chars from evidence and highlight them in text
+  const words = [...new Set(
+    evidence.match(/\b[A-Za-z][A-Za-z0-9+#.]{3,}\b/g) || []
+  )].filter(w => !['with','that','this','have','from','been','they','their','which','also','both','into','more','some','such','each','only','when','will','were','then','than','your','there','these','those','what','over'].includes(w.toLowerCase()));
+
+  let result = text;
+  words.forEach(w => {
+    const re = new RegExp(`\\b(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\b`, 'gi');
+    result = result.replace(re, `<mark class="${cls}">$1</mark>`);
+  });
+  return result;
+}
+
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function scoreColor(s) {
+  if (s >= 80) return '#10B981';
+  if (s >= 55) return '#F59E0B';
+  if (s >= 30) return '#F97316';
+  return '#EF4444';
+}
+
+function scoreGrade(s) {
+  if (s >= 80) return { label: 'Excellent Candidate', cls: 'text-emerald-600' };
+  if (s >= 60) return { label: 'Strong Candidate',    cls: 'text-blue-600' };
+  if (s >= 40) return { label: 'Average Candidate',   cls: 'text-amber-600' };
+  return { label: 'Needs Improvement', cls: 'text-red-500' };
+}
+</script>
+</body>
+</html>
