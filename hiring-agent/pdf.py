@@ -1,5 +1,4 @@
 import os
-import sys
 import json
 import time
 import logging
@@ -26,8 +25,6 @@ from typing import List, Optional, Dict, Any
 from prompt import (
     DEFAULT_MODEL,
     MODEL_PARAMETERS,
-    MODEL_PROVIDER_MAPPING,
-    GEMINI_API_KEY,
 )
 from prompts.template_manager import TemplateManager
 from transform import transform_parsed_data
@@ -36,13 +33,32 @@ logger = logging.getLogger(__name__)
 
 
 class PDFHandler:
-    def __init__(self):
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        model_params: Optional[Dict[str, Any]] = None,
+        provider_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
         self.template_manager = TemplateManager()
+        self.model_name = model_name or DEFAULT_MODEL
+        self.model_params = model_params or MODEL_PARAMETERS.get(
+            self.model_name, {"temperature": 0.1, "top_p": 0.9}
+        )
+        self.provider_name = provider_name
+        self.api_key = api_key
+        self.base_url = base_url
         self._initialize_llm_provider()
 
     def _initialize_llm_provider(self):
         """Initialize the appropriate LLM provider based on the model."""
-        self.provider = initialize_llm_provider(DEFAULT_MODEL)
+        self.provider = initialize_llm_provider(
+            self.model_name,
+            provider_name=self.provider_name,
+            api_key=self.api_key,
+            base_url=self.base_url,
+        )
 
     def extract_text_from_pdf(self, pdf_path: str) -> Optional[str]:
         try:
@@ -69,12 +85,10 @@ class PDFHandler:
         try:
             start_time = time.time()
             logger.debug(
-                f"🔄 Extracting {section_name} section using {DEFAULT_MODEL}..."
+                f"🔄 Extracting {section_name} section using {self.model_name}..."
             )
 
-            model_params = MODEL_PARAMETERS.get(
-                DEFAULT_MODEL, {"temperature": 0.1, "top_p": 0.9}
-            )
+            model_params = self.model_params
 
             section_system_message = self.template_manager.render_template(
                 "system_message", section_name_param=section_name
@@ -86,7 +100,7 @@ class PDFHandler:
                 return None
 
             chat_params = {
-                "model": DEFAULT_MODEL,
+                "model": self.model_name,
                 "messages": [
                     {"role": "system", "content": section_system_message},
                     {"role": "user", "content": prompt},
@@ -242,7 +256,7 @@ class PDFHandler:
             text_content, section_name, return_model
         )
         if section_data:
-            complete_resume = {
+            complete_resume: Dict[str, Any] = {
                 "basics": None,
                 "work": None,
                 "volunteer": None,
@@ -270,7 +284,7 @@ class PDFHandler:
 
         sections = ["basics", "work", "education", "skills", "projects", "awards"]
 
-        complete_resume = {
+        complete_resume: Dict[str, Any] = {
             "basics": None,
             "work": None,
             "volunteer": None,

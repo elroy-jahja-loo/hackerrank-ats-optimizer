@@ -6,7 +6,7 @@ An open-source, AI-powered web app that parses, scores, and annotates a software
 
 ## What It Does
 
-Upload a PDF resume and get back:
+Upload a PDF resume in the Flask app or Streamlit app and get back:
 
 - **Overall score out of 120** with a letter-grade tier (Excellent / Strong / Average / Needs Improvement)
 - **Four category scores** matching HackerRank's actual hiring criteria
@@ -61,10 +61,10 @@ Claude Haiku -> evaluation call
 EvaluationData: scores + evidence + strengths + improvements
     |
     v
-Flask API -> Frontend (color-coded viewer + score cards)
+Flask/Streamlit UI -> score cards + parsed resume JSON
 ```
 
-The grading logic is based on [interviewstreet/hiring-agent](https://github.com/interviewstreet/hiring-agent), HackerRank's open-source hiring pipeline. This project adds a web UI on top, extends the provider system to support Claude, OpenAI, OpenAI-compatible endpoints, and Ollama, and fixes template path resolution so it runs from any working directory.
+The grading logic is based on [interviewstreet/hiring-agent](https://github.com/interviewstreet/hiring-agent), HackerRank's open-source hiring pipeline. This project adds Flask and Streamlit UIs on top, extends the provider system to support Claude, OpenAI, OpenAI-compatible endpoints, Gemini, Groq, DeepSeek, and Ollama, and fixes template path resolution so it runs from any working directory.
 
 ---
 
@@ -114,7 +114,7 @@ This project performs resume analysis as a deterministic pipeline with constrain
 - It applies bonus points up to 20 for signals such as Google Summer of Code, Girl Script Summer of Code, founder or early-stage startup experience, portfolio links, LinkedIn, and technical blogs.
 - It applies deductions for weak signals such as tutorial-only projects, missing project links, broken links, generic project names, and lack of true open-source contributions.
 - Fairness constraints in the prompt explicitly exclude name, gender, school, GPA, geography, and unrelated demographic information from scoring.
-- `app.py` caps category scores and the final score to the documented range of `-20` to `120` before returning the API response.
+- `app.py` and `streamlit_app.py` cap category scores and the final score to the documented range of `-20` to `120` before returning the result.
 
 ### 7. Explainability output
 
@@ -189,6 +189,8 @@ Open [http://localhost:5050](http://localhost:5050), drag in a PDF, and wait ~30
 ```
 .
 |-- app.py                        # Flask server + /analyze endpoint
+|-- streamlit_app.py              # Streamlit app with runtime provider/key selection
+|-- requirements.txt              # Streamlit Cloud/root install dependencies
 |-- templates/
 |   `-- index.html                # Single-page UI (Tailwind CSS, vanilla JS)
 `-- hiring-agent/                 # HackerRank's evaluation engine
@@ -216,9 +218,44 @@ Open [http://localhost:5050](http://localhost:5050), drag in a PDF, and wait ~30
 |---|---|---|
 | Anthropic | `claude-haiku-4-5-20251001`, `claude-sonnet-4-6` | Recommended, uses prefill trick for reliable JSON |
 | OpenAI | `gpt-4o-mini`, `gpt-4o`, `gpt-4.1-mini`, `gpt-4.1` | Uses structured output JSON schema |
-| OpenAI-compatible | `deepseek-v4-pro` or compatible configured models | Uses `OPENAI_BASE_URL` for compatible chat APIs |
+| OpenAI-compatible | DeepSeek, Groq, or any compatible chat API | Uses runtime base URL for compatible chat APIs |
+| DeepSeek | `deepseek-chat`, `deepseek-v4-pro` | User supplies their own DeepSeek key in the UI |
+| Groq | `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `gemma2-9b-it` | Free hosted Llama/Gemma option with a Groq key |
 | Gemini | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` | Requires paid-tier API key |
 | Ollama | `gemma3:4b`, `qwen3:4b`, `mistral:7b`, others | Fully local, no API key needed |
+
+---
+
+## Streamlit Deployment
+
+The Streamlit app is the recommended public deployment because it does not require committing any API keys. Users choose a provider and paste their own key in the sidebar at runtime.
+
+### Run Streamlit Locally
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+### Deploy On Streamlit Community Cloud
+
+1. Push this repository to GitHub.
+2. Go to Streamlit Community Cloud and create a new app from the repo.
+3. Set the main file path to `streamlit_app.py`.
+4. Do not add your DeepSeek/OpenAI/Gemini/Anthropic key to the repository.
+5. Share the app URL. Each user enters their own provider, model, and API key in the app sidebar.
+
+### Free Or Low-Cost Provider Choices
+
+| Option | Hosted on Streamlit Cloud? | Cost model | Notes |
+|---|---|---|---|
+| Gemini free tier | Yes | Free quota with user's Google AI Studio key | Best hosted free default for most users |
+| Groq Llama/Gemma | Yes | Free quota with user's Groq key | OpenAI-compatible, fast, no local server needed |
+| Ollama | Local only by default | Free local compute | Works with `streamlit run streamlit_app.py` on a user's machine after `ollama pull gemma3:4b` |
+| DeepSeek | Yes | User pays/uses their own DeepSeek quota | OpenAI-compatible endpoint |
+| OpenAI/Anthropic | Yes | User pays with their own key | Good JSON reliability |
+
+Streamlit Community Cloud cannot reliably host a local Llama/Ollama server inside the app process. For a no-cost public deployment, use Gemini free tier or Groq's free hosted Llama/Gemma options and let users provide their own free API keys.
 
 ---
 

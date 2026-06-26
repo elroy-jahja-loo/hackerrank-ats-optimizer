@@ -35,6 +35,10 @@ MODEL_PARAMETERS = {
     "gpt-4.1-mini": {"temperature": 0.1, "top_p": 0.9},
     "gpt-4.1": {"temperature": 0.1, "top_p": 0.9},
     "deepseek-v4-pro": {"temperature": 0.1, "top_p": 0.9},
+    "deepseek-chat": {"temperature": 0.1, "top_p": 0.9},
+    "llama-3.1-8b-instant": {"temperature": 0.1, "top_p": 0.9},
+    "llama-3.3-70b-versatile": {"temperature": 0.1, "top_p": 0.9},
+    "gemma2-9b-it": {"temperature": 0.1, "top_p": 0.9},
     # Ollama models
     "qwen3:1.7b": {"temperature": 0.0, "top_p": 0.9},
     "gemma3:1b": {"temperature": 0.0, "top_p": 0.9},
@@ -64,6 +68,10 @@ MODEL_PROVIDER_MAPPING = {
     "gpt-4.1-mini": ModelProvider.OPENAI,
     "gpt-4.1": ModelProvider.OPENAI,
     "deepseek-v4-pro": ModelProvider.OPENAI,
+    "deepseek-chat": ModelProvider.OPENAI,
+    "llama-3.1-8b-instant": ModelProvider.OPENAI,
+    "llama-3.3-70b-versatile": ModelProvider.OPENAI,
+    "gemma2-9b-it": ModelProvider.OPENAI,
     # Ollama models
     "qwen3:1.7b": ModelProvider.OLLAMA,
     "gemma3:1b": ModelProvider.OLLAMA,

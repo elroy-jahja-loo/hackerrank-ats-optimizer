@@ -273,10 +273,10 @@ class GitHubProfile(BaseModel):
 class OllamaProvider:
     """Ollama LLM provider implementation."""
 
-    def __init__(self):
+    def __init__(self, host: Optional[str] = None):
         import ollama
 
-        self.client = ollama
+        self.client = ollama.Client(host=host) if host else ollama
 
     def chat(
         self,
@@ -400,6 +400,7 @@ class OpenAIProvider:
         from openai import OpenAI
 
         self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.base_url = base_url or ""
 
     def chat(
         self,
@@ -415,7 +416,7 @@ class OpenAIProvider:
             "temperature": (options or {}).get("temperature", 0.1),
         }
 
-        if "format" in kwargs:
+        if "format" in kwargs and not self.base_url:
             params["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
@@ -424,6 +425,8 @@ class OpenAIProvider:
                     "strict": False,
                 },
             }
+        elif "format" in kwargs:
+            params["response_format"] = {"type": "json_object"}
 
         response = self.client.chat.completions.create(**params)
         return {"message": {"role": "assistant", "content": response.choices[0].message.content}}
