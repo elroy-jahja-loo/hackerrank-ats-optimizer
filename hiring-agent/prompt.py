@@ -34,6 +34,7 @@ MODEL_PARAMETERS = {
     "gpt-4o": {"temperature": 0.1, "top_p": 0.9},
     "gpt-4.1-mini": {"temperature": 0.1, "top_p": 0.9},
     "gpt-4.1": {"temperature": 0.1, "top_p": 0.9},
+    "deepseek-v4-pro": {"temperature": 0.1, "top_p": 0.9},
     # Ollama models
     "qwen3:1.7b": {"temperature": 0.0, "top_p": 0.9},
     "gemma3:1b": {"temperature": 0.0, "top_p": 0.9},
@@ -62,6 +63,7 @@ MODEL_PROVIDER_MAPPING = {
     "gpt-4o": ModelProvider.OPENAI,
     "gpt-4.1-mini": ModelProvider.OPENAI,
     "gpt-4.1": ModelProvider.OPENAI,
+    "deepseek-v4-pro": ModelProvider.OPENAI,
     # Ollama models
     "qwen3:1.7b": ModelProvider.OLLAMA,
     "gemma3:1b": ModelProvider.OLLAMA,
@@ -82,4 +84,5 @@ MODEL_PROVIDER_MAPPING = {
 # Get API keys from environment
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")

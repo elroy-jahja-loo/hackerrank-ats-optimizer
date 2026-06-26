@@ -396,10 +396,10 @@ class GeminiProvider:
 class OpenAIProvider:
     """OpenAI API provider implementation."""
 
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str, base_url: Optional[str] = None):
         from openai import OpenAI
 
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
 
     def chat(
         self,
