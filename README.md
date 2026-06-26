@@ -243,7 +243,10 @@ streamlit run streamlit_app.py
 2. Go to Streamlit Community Cloud and create a new app from the repo.
 3. Set the main file path to `streamlit_app.py`.
 4. Do not add your DeepSeek/OpenAI/Gemini/Anthropic key to the repository.
-5. Share the app URL. Each user enters their own provider, model, and API key in the app sidebar.
+5. Keep `runtime.txt` in the repo so Streamlit uses Python 3.11 instead of Python 3.14.
+6. Share the app URL. Each user enters their own provider, model, and API key in the app sidebar.
+
+If dependency installation fails with `pydantic-core`, `pyarrow`, `PyO3`, or `CPython 3.14` build errors, Streamlit is using too-new a Python runtime. Confirm `runtime.txt` contains `python-3.11`, push it, then reboot/redeploy the app from Streamlit Cloud.
 
 ### Free Or Low-Cost Provider Choices
 
