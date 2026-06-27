@@ -316,10 +316,9 @@ class GeminiProvider:
     """Google Gemini API provider implementation."""
 
     def __init__(self, api_key: str):
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=api_key)
-        self.client = genai
+        self.client = genai.Client(api_key=api_key)
 
     def chat(
         self,
@@ -338,29 +337,43 @@ class GeminiProvider:
         BASE_DELAY = 10.0  # seconds — base for exponential backoff
         MAX_DELAY = 120.0  # cap so we never wait more than 2 minutes
 
-        # Map options to Gemini parameters
-        generation_config = {}
+        from google.genai import types
+
+        config = {}
         if options:
             if "temperature" in options:
-                generation_config["temperature"] = options["temperature"]
+                config["temperature"] = options["temperature"]
             if "top_p" in options:
-                generation_config["top_p"] = options["top_p"]
-
-        # Create a Gemini model
-        gemini_model = self.client.GenerativeModel(
-            model_name=model, generation_config=generation_config
-        )
+                config["top_p"] = options["top_p"]
+        if "format" in kwargs:
+            config["response_mime_type"] = "application/json"
+            config["response_json_schema"] = kwargs["format"]
 
         # Convert messages to Gemini format
-        gemini_messages = []
+        contents = []
+        system_instruction = None
         for msg in messages:
-            role = "user" if msg["role"] == "user" else "model"
-            gemini_messages.append({"role": role, "parts": [msg["content"]]})
+            if msg["role"] == "system":
+                system_instruction = msg["content"]
+            else:
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append(
+                    types.Content(
+                        role=role,
+                        parts=[types.Part.from_text(text=msg["content"])],
+                    )
+                )
+        if system_instruction:
+            config["system_instruction"] = system_instruction
 
         for attempt in range(MAX_RETRIES):
             try:
                 # Send the chat request
-                response = gemini_model.generate_content(gemini_messages)
+                response = self.client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config=types.GenerateContentConfig(**config),
+                )
 
                 # Convert Gemini response to Ollama-like format for compatibility
                 return {"message": {"role": "assistant", "content": response.text}}

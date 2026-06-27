@@ -131,7 +131,7 @@ This project performs resume analysis as a deterministic pipeline with constrain
 ```bash
 git clone https://github.com/elroy-jahja-loo/hackerrank-ats-optimizer
 cd hackerrank-ats-optimizer
-pip install flask python-dotenv PyMuPDF pymupdf4llm pydantic jinja2 requests anthropic openai google-generativeai ollama
+pip install -r requirements.txt
 ```
 
 ### 2. Configure your LLM provider
@@ -155,7 +155,7 @@ OPENAI_API_KEY=sk-proj-...
 **OpenAI-compatible endpoint**
 ```env
 LLM_PROVIDER=openai
-DEFAULT_MODEL=deepseek-v4-pro
+DEFAULT_MODEL=deepseek-v4-flash
 OPENAI_BASE_URL=https://api.deepseek.com
 OPENAI_API_KEY=sk-...
 ```
@@ -219,9 +219,9 @@ Open [http://localhost:5050](http://localhost:5050), drag in a PDF, and wait ~30
 | Anthropic | `claude-haiku-4-5-20251001`, `claude-sonnet-4-6` | Recommended, uses prefill trick for reliable JSON |
 | OpenAI | `gpt-4o-mini`, `gpt-4o`, `gpt-4.1-mini`, `gpt-4.1` | Uses structured output JSON schema |
 | OpenAI-compatible | DeepSeek, Groq, or any compatible chat API | Uses runtime base URL for compatible chat APIs |
-| DeepSeek | `deepseek-chat`, `deepseek-v4-pro` | User supplies their own DeepSeek key in the UI |
+| DeepSeek | `deepseek-v4-flash`, `deepseek-v4-pro`, `deepseek-chat` | `deepseek-chat` is deprecated by DeepSeek on 2026-07-24; prefer V4 models |
 | Groq | `llama-3.1-8b-instant`, `llama-3.3-70b-versatile`, `gemma2-9b-it` | Free hosted Llama/Gemma option with a Groq key |
-| Gemini | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` | Requires paid-tier API key |
+| Gemini | `gemini-2.0-flash`, `gemini-2.5-flash`, `gemini-2.5-pro` | Uses the official `google-genai` SDK |
 | Ollama | `gemma3:4b`, `qwen3:4b`, `mistral:7b`, others | Fully local, no API key needed |
 
 ---

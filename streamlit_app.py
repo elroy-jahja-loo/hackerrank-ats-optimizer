@@ -55,10 +55,10 @@ PROVIDER_PRESETS = {
     },
     "DeepSeek": {
         "provider": ModelProvider.OPENAI.value,
-        "models": ["deepseek-chat", "deepseek-v4-pro"],
+        "models": ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-chat"],
         "base_url": "https://api.deepseek.com",
         "needs_key": True,
-        "help": "OpenAI-compatible DeepSeek endpoint. Paste your DeepSeek API key.",
+        "help": "OpenAI-compatible DeepSeek endpoint. Prefer deepseek-v4-flash or deepseek-v4-pro; deepseek-chat is deprecated by DeepSeek on 2026-07-24.",
     },
     "Anthropic": {
         "provider": ModelProvider.ANTHROPIC.value,
