@@ -17,6 +17,15 @@ from prompts.template_manager import TemplateManager
 logger = logging.getLogger(__name__)
 
 
+def _normalize_evaluation_dict(evaluation_dict: dict) -> dict:
+    deductions = evaluation_dict.get("deductions")
+    if isinstance(deductions, dict):
+        total = deductions.get("total", 0)
+        if isinstance(total, (int, float)) and total < 0:
+            deductions["total"] = abs(total)
+    return evaluation_dict
+
+
 class ResumeEvaluator:
     def __init__(
         self,
@@ -92,7 +101,7 @@ class ResumeEvaluator:
             response_text = extract_json_from_response(response_text)
             logger.error(f"🔤 Prompt response: {response_text}")
 
-            evaluation_dict = json.loads(response_text)
+            evaluation_dict = _normalize_evaluation_dict(json.loads(response_text))
             evaluation_data = EvaluationData(**evaluation_dict)
 
             return evaluation_data
